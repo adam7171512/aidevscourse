@@ -46,3 +46,9 @@ messages = ApiInputBuilder()\
 
 answer = GptContact.get_chat_completion_for_formatted_input(messages)
 print(answer)
+
+# moderation info
+moderation_info = GptContact.get_moderation_info("Moderated input")
+print(moderation_info)
+flagged = moderation_info.get("results")[0].get("flagged")
+print(flagged)

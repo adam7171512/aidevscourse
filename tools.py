@@ -1,3 +1,4 @@
+import json
 import requests
 import openai
 from typing import Dict, List
@@ -11,6 +12,7 @@ AI_DEVS_TASK_TOKEN_URL = "https://zadania.aidevs.pl/token/"
 AI_DEVS_TASKS_URL = "https://zadania.aidevs.pl/task/"
 AI_DEVS_ANSWERS_URL = "https://zadania.aidevs.pl/answer/"
 AI_DEVS_KEY = config.get("api", "AI_DEVS_KEY")
+OPEN_AI_MODERATION_URL = "https://api.openai.com/v1/moderations"
 openai.api_key = config.get("api", "OPEN_AI_KEY")
 
 
@@ -95,6 +97,15 @@ class GptContact:
             builder.add_message(Role.USER, user_message)
         messages = builder.build()
         return GptContact.get_chat_completion_for_formatted_input(messages, self.model)
+
+    @staticmethod
+    def get_moderation_info(content: str):
+        response = requests.post(
+            OPEN_AI_MODERATION_URL,
+            headers={"Content-Type": "application/json", "Authorization": "Bearer " + openai.api_key},
+            data=json.dumps({"input": content})
+        )
+        return response.json()
 
     @staticmethod
     def get_chat_completion_for_formatted_input(messages: List[Dict], model: str = "gpt-3.5-turbo"):
