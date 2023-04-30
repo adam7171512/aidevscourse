@@ -1,4 +1,3 @@
-from ApiInputBuilder import ApiInputBuilder
 import requests
 import openai
 from typing import Dict, List
@@ -107,3 +106,17 @@ class GptContact:
         inp = ApiInputBuilder().add_message(Role.SYSTEM, system_message) \
             .add_message(Role.USER, user_message).build()
         return GptContact.get_chat_completion_for_formatted_input(inp, model)
+
+
+class ApiInputBuilder:
+    def __init__(self):
+        self.messages = []
+
+    def add_message(self, role: Role, content: str):
+        self.messages.append(
+            {"role": role.value, "content": content}
+        )
+        return self
+
+    def build(self):
+        return self.messages
