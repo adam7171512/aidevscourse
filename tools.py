@@ -87,7 +87,7 @@ class GptContact:
         self.user_messages.append(message)
         return self
 
-    def get_completion(self):
+    def get_completion(self, temperature: float = 1, max_tokens=1999):
         if not self.user_messages:
             raise ValueError("You have to provide User message to get completion!")
         builder = ApiInputBuilder()
@@ -96,7 +96,8 @@ class GptContact:
         for user_message in self.user_messages:
             builder.add_message(Role.USER, user_message)
         messages = builder.build()
-        return GptContact.get_chat_completion_for_formatted_input(messages, self.model)
+        return GptContact.get_chat_completion_for_formatted_input(
+            messages, self.model, temperature, max_tokens)
 
     @staticmethod
     def get_moderation_info(content: str):
@@ -108,15 +109,24 @@ class GptContact:
         return response.json()
 
     @staticmethod
-    def get_chat_completion_for_formatted_input(messages: List[Dict], model: str = "gpt-3.5-turbo"):
-        response = openai.ChatCompletion.create(model=model, messages=messages)
+    def get_chat_completion_for_formatted_input(messages: List[Dict],
+                                                model: str = "gpt-3.5-turbo",
+                                                temperature: float = 1,
+                                                max_tokens=1999):
+        response = openai.ChatCompletion.create(
+            model=model, messages=messages, temperature=temperature, max_tokens=max_tokens)
         return response.choices[0].message.content
 
     @staticmethod
-    def get_chat_completion(system_message: str, user_message: str, model: str = "gpt-3.5-turbo"):
+    def get_chat_completion(system_message: str,
+                            user_message: str,
+                            model: str = "gpt-3.5-turbo",
+                            temperature: float = 1,
+                            max_tokens=1999):
         inp = ApiInputBuilder().add_message(Role.SYSTEM, system_message) \
             .add_message(Role.USER, user_message).build()
-        return GptContact.get_chat_completion_for_formatted_input(inp, model)
+        return GptContact.get_chat_completion_for_formatted_input(
+            inp, model, temperature, max_tokens)
 
 
 class ApiInputBuilder:

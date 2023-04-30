@@ -22,7 +22,7 @@ def solve_hello_api(api_task: Dict[str, any]) -> str:
     gpt_answer = GptContact(). \
         set_system_message("Return value specified in msg field and nothing more! Omit quotes etc") \
         .add_user_message(str(api_task)) \
-        .get_completion()
+        .get_completion(max_tokens=20, temperature=0)
     print(gpt_answer)
     return gpt_answer
 
@@ -44,7 +44,7 @@ messages = ApiInputBuilder()\
     .add_message(Role.USER, "flat ?")\
     .build()
 
-answer = GptContact.get_chat_completion_for_formatted_input(messages)
+answer = GptContact.get_chat_completion_for_formatted_input(messages, max_tokens=50)
 print(answer)
 
 # moderation info
