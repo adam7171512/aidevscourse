@@ -76,7 +76,7 @@ class GptContact:
 
     def __init__(self, model: str = "gpt-3.5-turbo"):
         self.system_message = None
-        self.user_messages = []
+        self.conversation = []
         self.model = model
 
     def set_system_message(self, message: str):
@@ -84,20 +84,24 @@ class GptContact:
         return self
 
     def add_user_message(self, message: str):
-        self.user_messages.append(message)
+        self.conversation.append({"role": "user", "content": message})
+        return self
+
+    def add_message(self, message: str, role: Role):
+        self.conversation.append({"role": role.value, "content": message})
         return self
 
     def get_completion(self, temperature: float = 1, max_tokens=1999):
-        if not self.user_messages:
-            raise ValueError("You have to provide User message to get completion!")
-        builder = ApiInputBuilder()
+        if not self.conversation:
+            raise ValueError("No messages to send!")
+        messages = []
         if self.system_message:
-            builder.add_message(Role.SYSTEM, self.system_message)
-        for user_message in self.user_messages:
-            builder.add_message(Role.USER, user_message)
-        messages = builder.build()
-        return GptContact.get_chat_completion_for_formatted_input(
+            messages.append({"role": "system", "content": self.system_message})
+        messages.extend(self.conversation)
+        answer = GptContact.get_chat_completion_for_formatted_input(
             messages, self.model, temperature, max_tokens)
+        self.conversation.append({"role": "assistant", "content": answer})
+        return answer
 
     @staticmethod
     def get_moderation_info(content: str):
