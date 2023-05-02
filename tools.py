@@ -4,6 +4,7 @@ import openai
 from typing import Dict, List
 from enum import Enum
 import configparser
+import tiktoken
 
 config = configparser.ConfigParser()
 config.read("config.ini")
@@ -14,6 +15,14 @@ AI_DEVS_ANSWERS_URL = "https://zadania.aidevs.pl/answer/"
 AI_DEVS_KEY = config.get("api", "AI_DEVS_KEY")
 OPEN_AI_MODERATION_URL = "https://api.openai.com/v1/moderations"
 openai.api_key = config.get("api", "OPEN_AI_KEY")
+
+token_limits = {
+    "gpt-3.5-turbo": 4096
+}
+
+
+def str_token_count(s: str) -> int:
+    return len(tiktoken.get_encoding("cl100k_base").encode(s))
 
 
 class Role(Enum):
@@ -75,9 +84,18 @@ class TaskManager:
 class GptContact:
 
     def __init__(self, model: str = "gpt-3.5-turbo"):
-        self.system_message = None
+        self._system_message = {"role": "system", "content": ""}
         self.conversation = []
         self.model = model
+        self.model_token_limit = token_limits.get(self.model, "2048")
+
+    @property
+    def system_message(self) -> str:
+        return self._system_message.get("content")
+
+    @system_message.setter
+    def system_message(self, message: str):
+        self._system_message["content"] = message
 
     def set_system_message(self, message: str):
         self.system_message = message
@@ -91,15 +109,39 @@ class GptContact:
         self.conversation.append({"role": role.value, "content": message})
         return self
 
-    def get_completion(self, temperature: float = 1, max_tokens=1999):
+    def get_completion(self,
+                       temperature: float = 1,
+                       max_response_tokens=1000,
+                       chat_history_token_limit=None,
+                       chat_history_recent_messages_limit=None):
+
         if not self.conversation:
             raise ValueError("No messages to send!")
+
         messages = []
+
+        sys_message_tokens = str_token_count(str(self._system_message)) if self.system_message else 0
+        chat_history_tokens_available = self.model_token_limit - sys_message_tokens - max_response_tokens
+
+        if chat_history_token_limit:
+            chat_history_tokens_available = min(chat_history_token_limit, chat_history_tokens_available)
+
+        messages_appended = 0
+        for message in reversed(self.conversation):
+            message_token_count = str_token_count(str(message))
+            if chat_history_recent_messages_limit and messages_appended >= chat_history_recent_messages_limit:
+                break
+            elif chat_history_tokens_available < message_token_count:
+                break
+            messages.insert(0, message)
+            chat_history_tokens_available -= message_token_count
+            messages_appended += 1
+
         if self.system_message:
-            messages.append({"role": "system", "content": self.system_message})
-        messages.extend(self.conversation)
+            messages.insert(0, self._system_message)
+
         answer = GptContact.get_chat_completion_for_formatted_input(
-            messages, self.model, temperature, max_tokens)
+            messages, self.model, temperature, max_response_tokens)
         self.conversation.append({"role": "assistant", "content": answer})
         return answer
 
